@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN"
+        "http://www.springframework.org/dtd/spring-beans.dtd">
+<!-- =======================spring配置文件中============================== -->
+
+<beans>
+
+<!-- =======================从申养获取保存老人信息============================== -->
+		<bean id="jobDetailFactoryFirst" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		        <property name="targetObject">
+		          <!--  <bean class="com/wondersgroup/kjzl/ykt/action/AttachmentAction" />   -->
+		           <bean class="com.wondersgroup.kjzl.ykt.action.AttachmentAction"></bean>
+		        </property>
+		        <property name="targetMethod">
+		            <value>queryPersonnelInfo</value>
+		        </property>
+		        <property name="concurrent" value="false" /><!-- 作业不并发调度 -->  
+    	</bean>
+
+	<!--第一种SimpleTriggerBean，只支持按照一定频度调用任务，如每隔30分钟运行一次。-->
+    <bean id="simpleTriggerFirst" class="org.springframework.scheduling.quartz.SimpleTriggerFactoryBean">  
+		<property name="jobDetail" ref="jobDetailFactoryFirst" />  
+		<property name="startDelay" value="5000" /> 
+		<property name="repeatInterval" value="120000" />
+	</bean>
+	
+<!-- =======================从申养获取保存部门机构信息============================== -->
+	  <bean id="jobDetailFactorytwoSecond" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		        <property name="targetObject">
+		          <!--  <bean class="com/wondersgroup/kjzl/ykt/action/AttachmentAction" />   -->
+		           <bean class="com.wondersgroup.kjzl.ykt.action.AttachmentAction"></bean>
+		        </property>
+		        <property name="targetMethod">
+		            <value>queryDeptInfo</value>
+		        </property>
+		        <property name="concurrent" value="false" /><!-- 作业不并发调度 -->  	
+    	</bean>
+
+	<!--第二种CronTriggerBean，支持到指定时间运行一次，如每天12:00运行一次等。-->
+	<bean id="simpleTriggerSecond" class="org.springframework.scheduling.quartz.CronTriggerBean">  
+			<property name="jobDetail" ref="jobDetailFactorytwoSecond" />  
+			<!—每天12:00运行一次 -->  
+			<property name="cronExpression" value="0 0 12 * * ?" />  
+	</bean>  
+	
+<!--==================================向申养推送老人消费信息===================================== -->
+	 <bean id="jobDetailFactoryThird" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		        <property name="targetObject">
+		           <bean class="com.wondersgroup.kjzl.ykt.action.AttachmentAction"></bean>
+		        </property>
+		        <property name="targetMethod">
+		            <value>queryConsumeInfo</value>
+		        </property>
+		        <property name="concurrent" value="false" /><!-- 作业不并发调度 -->  	
+    	</bean>
+    <!--第一种SimpleTriggerBean，只支持按照一定频度调用任务，如每隔30分钟运行一次。-->
+    <bean id="simpleTriggerThird" class="org.springframework.scheduling.quartz.SimpleTriggerFactoryBean">  
+		<property name="jobDetail" ref="jobDetailFactoryThird" />  
+		<property name="startDelay" value="7000" /> 
+		<property name="repeatInterval" value="600000" />
+	</bean>
+	
+<!-- =====================================向申养推送ykt的Organize表的信息======================================== -->
+	 <bean id="jobDetailFactoryFourth" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		        <property name="targetObject">
+		          <!--  <bean class="com/wondersgroup/kjzl/ykt/action/AttachmentAction" />   -->
+		           <bean class="com.wondersgroup.kjzl.ykt.action.AttachmentAction"></bean>
+		        </property>
+		        <property name="targetMethod">
+		            <value>queryOrganizeInfo</value>
+		        </property>
+		        <property name="concurrent" value="false" /><!-- 作业不并发调度 -->  	
+    	</bean>
+    
+    <!--第二种CronTriggerBean，支持到指定时间运行一次，如每天12:00运行一次等。-->
+    <bean id="simpleTriggerFourth" class="org.springframework.scheduling.quartz.CronTriggerBean">  
+			<property name="jobDetail" ref="jobDetailFactoryFourth" />  
+			<!—每天12:00运行一次 -->  
+			<property name="cronExpression" value="0 0 12 * * ?" />  
+	</bean>  
+	
+
+<!-- =======================定时任务的工厂============================== -->		
+			<bean class="org.springframework.scheduling.quartz.SchedulerFactoryBean">    
+			    <property name="triggers">    
+			        <list>    
+						     <ref bean="simpleTriggerFirst" /> 
+						     <ref bean="simpleTriggerSecond" />
+						     <ref bean="simpleTriggerThird" /> 
+						     <ref bean="simpleTriggerFourth" />  
+			        </list>    
+			    </property>    
+			</bean>  
+</beans>
