@@ -1,0 +1,219 @@
+package com.wondersgroup.attachment.action;
+
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import net.sf.json.JSONObject;
+
+import org.apache.struts2.ServletActionContext;
+
+import com.wondersgroup.attachment.model.DeptInfoVo;
+import com.wondersgroup.attachment.model.PersonnelInfoVo;
+import com.wondersgroup.attachment.service.AttachmentService;
+
+import com.wondersgroup.framework.core.web.struts2.action.BaseAjaxAction;
+import com.wondersgroup.framework.core.web.vo.VOUtils;
+import com.wondersgroup.model.TCardTrnsferlog;
+import com.wondersgroup.model.TMidSmartDeal;
+import com.wondersgroup.model.TSmartOrganize;
+
+public class YktInfoAction extends BaseAjaxAction{
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	
+		
+	    AttachmentService attachmentService;
+	  
+	    
+		
+	    public AttachmentService getAttachmentService() {
+		return attachmentService;
+	    }
+	    
+	    public void setAttachmentService(AttachmentService attachmentService) {
+		this.attachmentService = attachmentService;
+	    }
+	    
+	    /**
+	     * 前置机一卡通获取申养老人信息
+	     * xiechanghui
+	     * 17/3/8 11:00
+	     * @throws Exception 
+	     */
+	    public String queryPersonnelInfo(){
+    		 JSONObject jsonObject = new JSONObject();
+ 	        try{
+ 	        	List<PersonnelInfoVo> perlists=attachmentService.queryPersonnelInfo();
+ 	            jsonObject.put("success",true);
+ 	            jsonObject.put("size",perlists.size());
+ 	            jsonObject.put("json",VOUtils.getJsonDataFromCollection(perlists));
+ 	        }catch (Exception e){
+ 	            e.printStackTrace();
+ 	            jsonObject.put("success", false);
+ 	        }
+ 	        System.out.println("obj="+jsonObject);
+ 	       createJSonData(jsonObject.toString());
+ 	        return AJAX;
+	    }
+	    
+	    /**
+	     * 接收一卡通Per返回的接收状态
+	     * @return
+	     */
+	    public String perSaveTransferLog (){
+	        try {
+	        	 Date currentTime = new Date();
+	    		 SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	    		 String d=formatter.format(currentTime);
+	    		 currentTime=formatter.parse(d);
+	            String success = this.servletRequest.getParameter("persuccess");
+	            String size =this.servletRequest.getParameter("persize");
+	            TCardTrnsferlog log=new TCardTrnsferlog();
+	            log.setCssj(currentTime);//时间
+            	log.setSjls(new Long(size));
+            	log.setBm("t_customer");
+	            if("01".equals(success)){
+	            	log.setCgbz("01");
+	            }else{
+	            	log.setCgbz("00");
+	            }
+	            attachmentService.saveTransferLog(log);
+	        }catch (Exception e){
+	            e.printStackTrace();
+	        }
+	        return AJAX;
+	    } 			
+	    /**
+	     * 前置机一卡通获取申养人事部门信息
+	     * xiechanghui
+	     * 17/3/8 11:00
+	     * @throws Exception 
+	     */
+	  
+	    public String queryDeptInfo(){
+    		 JSONObject jsonObject = new JSONObject();
+  	        try{
+	  	      	List<DeptInfoVo> deptlist=attachmentService.queryDeptInfo();
+  	            jsonObject.put("success",true);
+  	            jsonObject.put("size",deptlist.size());
+  	            jsonObject.put("json",VOUtils.getJsonDataFromCollection(deptlist));
+  	        }catch (Exception e){
+  	            e.printStackTrace();
+  	            jsonObject.put("success", false);
+  	        }
+  	        createJSonData(jsonObject.toString());
+  	        return AJAX;
+ 	    }
+	    /**
+	     * 接收一卡通Dept返回的接收状态
+	     * @return
+	     */
+	    public String deptSaveTransferLog (){
+	        try {
+	        	 Date currentTime = new Date();
+	    		 SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	    		 String d=formatter.format(currentTime);
+	    		 currentTime=formatter.parse(d);
+	            String success = this.servletRequest.getParameter("deptsuccess");
+	            String size =this.servletRequest.getParameter("deptsize");
+	            TCardTrnsferlog log=new TCardTrnsferlog();
+	        	log.setCssj(currentTime);//时间
+            	log.setSjls(new Long(size));
+            	log.setBm("cs_organ_node");
+	            if("01".equals(success)){
+	            	log.setCgbz("01");
+	            }else{
+	            	log.setCgbz("00");
+	            }
+	            attachmentService.saveTransferLog(log);
+	        }catch (Exception e){
+	            e.printStackTrace();
+	        }
+	        return AJAX;
+	    } 			
+	   
+	    
+	
+	 /**
+     * 定时获取保存老人一卡通的消费信息
+     */
+    public void setConsumeInfo(){
+    	HttpServletResponse response = ServletActionContext.getResponse();   
+    	HttpServletRequest request = ServletActionContext.getRequest();  
+	 	String cusStatus = "1";
+	 	String cusMsg = "信息接收成功";
+    	try{
+    			System.out.println("request...setYktInfo");  
+    		    response.setCharacterEncoding("UTF-8");  
+    		    String consumeInfo=request.getParameter("consumeInfo");
+    			String  conStr = consumeInfo.toLowerCase();
+    		    List<TMidSmartDeal> xfList = 
+    		   (List<TMidSmartDeal>)VOUtils.getBeanListFromJsonData(conStr, new String[] {"dealdatetime","keepingdate"},"yyyy-MM-dd HH:mm:ss" , TMidSmartDeal.class);
+    		    
+    		 	if(xfList.size()>0){
+     			  cusStatus=attachmentService.saveTMidSmartDeal(xfList);
+    		    }else{
+    		    	cusMsg="数据为空";
+    		    } 	
+    		 	if("0".equals(cusStatus)){
+    		 		cusMsg="数据接收失败";
+    		 	}
+    		}catch(Exception e){
+    	    	e.printStackTrace();
+    	    }
+    	JSONObject jsonObject = new JSONObject(); 
+		jsonObject.put("message",cusMsg);
+		jsonObject.put("status",cusStatus);
+		try {
+			response.getWriter().write(jsonObject.toString());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+    }
+    /**
+     * 定时获取保存一卡通Smart_Organize表信息
+     */
+    public void setOrganizeInfo(){
+    	HttpServletResponse response = ServletActionContext.getResponse();   
+    	HttpServletRequest request = ServletActionContext.getRequest();  
+    	String orgStatus = "1";
+	 	String orgMsg = "信息接收成功";
+	 	System.out.println("orgStatus="+orgStatus);
+    	try{
+			System.out.println("request...setYktInfo");  
+		    response.setCharacterEncoding("UTF-8");  
+		    String organInfo=request.getParameter("organInfo");
+
+		    List<TSmartOrganize> organList = (List<TSmartOrganize>)VOUtils.getBeanListFromJsonData(organInfo,TSmartOrganize.class);
+		    if(organList.size()>0){
+			   orgStatus= attachmentService.saveTSmartOrganize(organList);
+		    }else{
+		    	orgMsg = "数据为空！";
+		    }
+		    if("0".equals(orgStatus)){
+		    	orgMsg="数据接收失败";
+		    }
+		}catch(Exception e){
+	    	e.printStackTrace();
+	    }
+    	JSONObject jsonObject = new JSONObject(); 
+		jsonObject.put("message",orgMsg);
+		jsonObject.put("status",orgStatus);
+		try {
+			response.getWriter().write(jsonObject.toString());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+    	}
+    
+
+}
