@@ -1,0 +1,74 @@
+package Test;
+
+import java.text.DateFormatSymbols;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
+
+/**
+ * Created by xiaoxie on 2017/6/28.
+ * 当月日历
+ */
+public class Test {
+    public static void  main(String[] args){
+        //construct d as current date
+        GregorianCalendar d=new GregorianCalendar();
+
+        int today=d.get(Calendar.DAY_OF_MONTH);
+        int month=d.get(Calendar.MONTH);
+
+        //set d to start date of month
+        d.set(Calendar.DAY_OF_MONTH,1);
+
+        int weekday=d.get(Calendar.DAY_OF_WEEK);
+
+        //get first day of week (Sunday in the U.S.)
+        int firstDayOfWeek=d.getFirstDayOfWeek();
+
+        //datetime the required indentation for the first line
+        int indent=0;
+        while(weekday!=firstDayOfWeek){
+            indent++;
+            d.add(Calendar.DAY_OF_MONTH,-1);
+            weekday=d.get(Calendar.DAY_OF_WEEK);
+        }
+
+        //print weekday names
+        String[] weekdayNames=new DateFormatSymbols().getShortWeekdays();
+        do {
+            System.out.printf("%4s",weekdayNames[weekday]);
+            d.add(Calendar.DAY_OF_MONTH,1);
+            weekday=d.get(Calendar.DAY_OF_WEEK);
+        }while(weekday!=firstDayOfWeek);
+        System.out.println();
+        for (int i=0;i<indent;i++){
+            System.out.print("    ");
+        }
+
+        d.set(Calendar.DAY_OF_MONTH,1);
+        do {
+            //print day
+            int day=d.get(Calendar.DAY_OF_MONTH);
+            System.out.printf("%3d",day);
+
+            //mark current day with
+            if(day==today) System.out.print("*");
+            else System.out.print(" ");
+
+            //advance d to the next day
+            d.add(Calendar.DAY_OF_MONTH,1);
+            weekday=d.get(Calendar.DAY_OF_WEEK);
+
+            //start a new line at the start of week
+            if(weekday==firstDayOfWeek) System.out.println();
+        }while (d.get(Calendar.MONTH)==month);
+        //the loop exits when d is day l of the next month
+
+        //print final end of line if neccessary
+        if(weekday!=firstDayOfWeek) System.out.println();
+
+
+    }
+
+
+}
