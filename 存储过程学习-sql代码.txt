@@ -1,0 +1,236 @@
+MySQL的存储过程的学习sql.
+
+#参数 in
+drop procedure if EXISTS in_param;
+CREATE  procedure in_param(in p_in int)
+	BEGIN
+-- 		select p_in;
+			set p_in=2;
+		select p_in;
+	end 
+
+set @p_in=1;
+call IN_param(@p_in);
+
+select @p_in;
+
+#参数 out
+DROP PROCEDURE IF EXISTS out_param;  
+create procedure out_param(out p_out int)
+	BEGIN	
+		set p_out=2;
+		select p_out;
+	end;
+
+set @p_out=1;
+call out_param(@p_out);
+select @p_out; 
+
+
+# 参数 inout
+drop procedure if EXISTS inout_param;
+create procedure inout_param(inout p_inout int)
+BEGIN
+-- 	select p_inout;
+	set p_inout=2;
+	select p_inout;
+end
+
+set @p_inout=1;
+call  inout_param(@p_inout);
+
+select @p_inout;
+
+#参数赋值
+select 'hello world' into @x;
+select @x;
+
+set @y='Goodbye my world';
+select @y;
+
+set @z=1+2+3;
+select @z; 
+
+drop PROCEDURE if exists Geetworld;
+create procedure Geetworld()
+begin 
+select concat(@greeting,'world');
+end
+
+set @greeting='Hello ';
+CALL Geetworld();
+
+
+# 存储过程之间的变量传递
+drop procedure if exists p1;
+create procedure p1() 
+ begin
+set @last_proc='p1';
+end
+
+drop procedure if exists p2;
+create procedure p2() 
+BEGIN
+	select CONCAT('last procedure was ',@last_proc);
+end
+
+call p1();
+call p2();
+
+#查询数据库中的存储过程
+select name from mysql.proc where db='sytest' order by name
+
+select routine_name from information_schema.ROUTINES where routine_schema='sytest'
+
+show procedure status where db='sytest'
+
+#查看存储过程详细信息
+show create procedure sytest.p1;
+
+#存储过程的修改。
+-- ALTER PROC 保留了已经建立的存储过程的任何权限。
+-- 它在系统对象中保留了相同的对象ID并允许保留依赖关系。
+-- 例如，如果过程A调用过程B，并删除和重新创建了过程B，
+-- 那么就不能再看到这两者之间的依赖关系。
+-- 如果使用ALTER，则依赖关系依然存在。
+
+#将读写权限改为MODIFIES SQL DATA，并指明调用者可以执行。
+ALTER  PROCEDURE  num_from_employee
+  MODIFIES SQL DATA
+  SQL SECURITY INVOKER ;
+#将读写权限改为READS SQL DATA，并加上注释信息'FIND NAME'。
+ALTER  PROCEDURE  name_from_employee
+  READS SQL DATA
+  COMMENT 'FIND NAME' ;
+
+
+#变量作用域
+-- 内部变量在其作用域范围内，享有最高的优先权，当执行到end时，内部变量消失。
+
+drop procedure if exists procXX;
+create procedure procXX()
+BEGIN
+	declare x1 VARCHAR(5) DEFAULT 'outer';
+	BEGIN
+ 		declare x1 varchar(5) DEFAULT 'inner';
+ 		select x1;
+
+	end;
+ 	select x1;
+end;
+
+call procXX();
+
+
+# IF-Then-Else语句
+create table t(
+ s1 int PRIMARY key
+)
+
+select * from t
+
+drop procedure if exists proc_if;
+create procedure proc_if(in parameter int)
+begin 
+	declare var int;
+	set var=parameter+1;
+	if var=0 then 
+		INSERT into t values(17);
+	end if;
+	if parameter=0 THEN
+		update t set s1=s1-2;
+	ELSE
+		update t set s1=s1+2;
+	end if;
+end;
+
+set @parameter=0;
+call proc_if(@parameter);
+
+# CASE-when-then-else语句
+
+DROP procedure if exists proc_case;
+create procedure proc_case(in parameter int)
+BEGIN
+	declare var int;
+	set var=parameter+1;
+	case var
+		when 0 THEN
+			INSERT into t values(17);
+		when 1 then
+			insert into t values(18);
+		ELSE
+			insert into t values(19);
+	end case;
+end;
+
+set @parameter=0;
+call proc_case(@parameter);
+
+#while-DO...end-WHILE
+drop procedure if exists proc_while;
+create procedure proc_while()
+BEGIN
+	declare var int;
+	set var=3;
+	while var<6 DO
+		insert into t values(var);
+		set var=var+1;
+	end while;
+end;
+
+call proc_while();
+
+select * from t
+
+# repeat...end REPEAT
+drop procedure if exists proc_repeat;
+create procedure proc_repeat()
+BEGIN
+	declare v int;
+	set v=6;
+	repeat 
+		insert into t values(v);
+		set v=v+1;
+	  until v>=18
+	end REPEAT;
+end;
+
+call proc_repeat();
+
+
+# LOOP...end LOOP
+
+drop procedure if exists proc_loop;
+create procedure proc_loop()
+BEGIN
+	declare v int;
+	set v=19;
+	loop_lable:LOOP
+		insert into t values(v);
+		set v=v+1;
+		if v>=101 then 
+			LEAVE loop_lable;
+		end if;
+	end loop;
+END;
+
+call proc_loop();
+
+select * from t
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
