@@ -1,0 +1,10 @@
+1》导入jar包：
+poi-3.11-20141221.jar
+poi-ooxml-3.11-20141221.jar
+poi-ooxml-schemas-3.11-20141221.jar
+
+2》代替Word模板中的变量时，建议使用docUtil中的searchAndReplace方法。
+
+3》Word模板中的变量，前后不能有空格，如果是是方格中的变量，一个方格只能有一个变量。（解决方案：在Word模板中隐藏方格线。）
+
+4》Word模板不要使用汉字命名，在非windows系统下，可能存在乱码问题。

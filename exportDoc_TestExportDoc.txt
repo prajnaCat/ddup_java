@@ -1,0 +1,55 @@
+ /***
+     * 导出Word文档
+     * @return String
+     */
+    public String exportDoc(){
+        XWPFDocument doc = null;
+        OutputStream out = null;
+        FileInputStream in = null;
+        DocxUtil docxUtil = null;
+        try {
+            String rootPath = "";
+            ServletContext context = servletRequest.getSession().getServletContext();
+            String pgid = this.servletRequest.getParameter("pgid");
+            String customerid = this.servletRequest.getParameter("customerid");
+            RankExportDocVO docVo=null;
+            if (pgid!=null&&customerid!=null) {
+                rootPath = context.getRealPath("/docmodel/PG/RankPrintAll_WordTemplate.docx");//模板Word所在目录
+                docVo = rankPrintService.queryRankPginfo(pgid,customerid,this.getSecondInstid());
+            }else{
+                throw new Exception("传输字段为空！");
+            }
+            Map<String, String> params = new HashMap<String, String>();
+            docxUtil = new DocxUtil();
+            XWPFDocument document = new XWPFDocument(POIXMLDocument.openPackage(rootPath));
+            docxUtil.copyParamFromBean(docVo, params);
+            docxUtil.searchAndReplace(document, params);
+//            doc = new XWPFDocument(in);
+            // 清空response
+            this.servletResponse.reset();
+            // 设置response的Header
+            String userAgent = this.servletRequest.getHeader("User-Agent");
+            String realname = "最终导出文档名.docx";
+            if (userAgent.contains("Firefox")) {
+                // 采用BASE64编码
+                realname = "=?UTF-8?B?" + new BASE64Encoder().encode(realname.getBytes("utf-8")) + "?=";
+            } else {
+                // 其它浏览器 IE 、google 采用URL编码
+                realname = URLEncoder.encode(realname, "utf-8");
+                realname = realname.replace("+", " ");
+            }
+            servletResponse.setHeader("Content-Disposition", "attachment;filename=" + realname);
+            String minitype = ServletActionContext.getServletContext().getMimeType(realname);
+            servletResponse.setContentType(minitype);
+            out = this.servletResponse.getOutputStream();
+            document.write(out);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (null != docxUtil) {
+//                docxUtil.close(in);
+                docxUtil.close(out);
+            }
+        }
+        return null;
+    }

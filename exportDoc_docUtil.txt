@@ -1,0 +1,586 @@
+package com.wondersgroup.util;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.reflect.Field;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.Map.Entry;
+import org.apache.poi.POIXMLDocument;
+import org.apache.poi.hssf.usermodel.HSSFCell;
+import org.apache.poi.hssf.usermodel.HSSFDateUtil;
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+
+//import com.wondersgroup.model.TDietCookbookWeek;
+
+//解析WORD文件
+public class DocxUtil {
+//    public MyBeanTool beanTool = new MyBeanTool();
+
+    public static void searchAndReplace(XWPFDocument document,Map<String, String> map) {
+        try {
+
+            /**
+             * 替换段落中的指定文字
+             */
+            Iterator<XWPFParagraph> itPara = document.getParagraphsIterator();
+            while (itPara.hasNext()) {
+                XWPFParagraph paragraph = (XWPFParagraph) itPara.next();
+                Set<String> set = map.keySet();
+                Iterator<String> iterator = set.iterator();
+                while (iterator.hasNext()) {
+                    String key = iterator.next();
+                    List<XWPFRun> run=paragraph.getRuns();
+                    for(int i=0;i<run.size();i++)
+                    {
+                        if(run.get(i).getText(run.get(i).getTextPosition())!=null &&
+                                run.get(i).getText(run.get(i).getTextPosition()).equals(key))
+                        {
+                            /**
+                             * 参数0表示生成的文字是要从哪一个地方开始放置,设置文字从位置0开始
+                             * 就可以把原来的文字全部替换掉了
+                             */
+                            run.get(i).setText(map.get(key),0);
+                        }
+                    }
+                }
+            }
+
+            /**
+             * 替换表格中的指定文字
+             */
+            Iterator<XWPFTable> itTable = document.getTablesIterator();
+            while (itTable.hasNext()) {
+                XWPFTable table = (XWPFTable) itTable.next();
+                int count = table.getNumberOfRows();
+                for (int i = 0; i < count; i++) {
+                    XWPFTableRow row = table.getRow(i);
+                    List<XWPFTableCell> cells = row.getTableCells();
+                    for (XWPFTableCell cell : cells) {
+                        for (Entry<String, String> e : map.entrySet()) {
+                            if (cell.getText().equals(e.getKey())) {
+                                cell.removeParagraph(0);
+                                cell.setText(e.getValue());
+                            }
+                        }
+                    }
+                }
+            }
+//            FileOutputStream outStream = null;
+//            outStream = new FileOutputStream(destPath);
+//            document.write(outStream);
+//            outStream.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+
+
+    /**
+     * 替换段落里面的变量
+     *
+     * @param doc
+     *            要替换的文档
+     * @param params
+     *            参数
+     */
+    public void replaceInPara(XWPFDocument doc, Map<String, Object> params) {
+        Iterator<XWPFParagraph> iterator = doc.getParagraphsIterator();
+        XWPFParagraph para;
+        while (iterator.hasNext()) {
+            para = iterator.next();
+            this.replaceInPara(para, params);
+        }
+    }
+
+    /**
+     * 替换段落里面的变量
+     *
+     * @param para
+     *            要替换的段落
+     * @param params
+     *            参数
+     */
+    public void replaceInPara(XWPFParagraph para, Map<String, Object> params) {
+        List<XWPFRun> runs;
+        Matcher matcher;
+        String text = para.getText();
+        if (this.matcher(text).find()) {
+            runs = para.getRuns();
+
+            int start = -1;
+            int end = -1;
+            String str = "";
+            for (int i = 0; i < runs.size(); i++) {
+                XWPFRun run = runs.get(i);
+                String runText = run.getText(0);
+                if (runText == null || "".equals(runText)) {
+                    continue;
+                }
+                String newStr = "";
+                if (this.matcher(runText).find()) {
+                    end = runText.indexOf("}");
+                    start = runText.indexOf("$");
+                    str = runText.substring(start, end + 1);
+                    newStr = this.matcher(runText).replaceFirst(params.get(str) == null || params.get(str).toString().equals("") ? " " : params.get(str).toString());
+                    // runText.replace(runText, newStr);
+                    run.setText(newStr, 0);
+                    // System.out.println("导出World=======param:" + runText +
+                    // "=========>>>>>" + newStr);
+                }
+
+            }
+
+        }
+    }
+
+    /**
+     * 替换表格里面的变量
+     *
+     * @param doc
+     *            要替换的文档
+     * @param params
+     *            参数
+     */
+    public void replaceInTable(XWPFDocument doc, Map<String, Object> params) {
+        Iterator<XWPFTable> iterator = doc.getTablesIterator();
+        XWPFTable table;
+        List<XWPFTableRow> rows;
+        List<XWPFTableCell> cells;
+        List<XWPFParagraph> paras;
+        while (iterator.hasNext()) {
+            table = iterator.next();
+            rows = table.getRows();
+            for (XWPFTableRow row : rows) {
+                cells = row.getTableCells();
+                for (XWPFTableCell cell : cells) {
+                    paras = cell.getParagraphs();
+                    for (XWPFParagraph para : paras) {
+                        this.replaceInPara(para, params);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 正则匹配字符串
+     *
+     * @param str
+     * @return
+     */
+    private Matcher matcher(String str) {
+        Pattern pattern = Pattern.compile("\\$\\{(.+?)\\}", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(str);
+        return matcher;
+    }
+
+    /**
+     * 关闭输入流
+     *
+     * @param is
+     */
+    public void close(InputStream is) {
+        if (is != null) {
+            try {
+                is.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * 关闭输出流
+     *
+     * @param os
+     */
+    public void close(OutputStream os) {
+        if (os != null) {
+            try {
+                os.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     *
+     * @author Administrator
+     * @Description: 将t中的字段转换成替换模板需要的数据${字段}-->字段值
+     * @return
+     * @date 2017年5月24日 上午9:17:23
+     *
+     */
+    public <T> Map<String, String> copyParamFromBean(T t, Map<String, String> params) {
+        Field[] fields = t.getClass().getDeclaredFields();
+        String key;
+        String value;
+        for (Field field : fields) {
+            String fieldName = field.getName();
+            key = "${" + fieldName + "}";
+            String name = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+            try {
+                value = String.valueOf(t.getClass().getMethod(name).invoke(t));
+                params.put(key, value);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return params;
+    }
+
+    /****** 读Excel *******/
+    // private POIFSFileSystem fs;
+    private XSSFWorkbook wb;
+    private XSSFSheet sheet;
+    private XSSFRow row;
+
+    /**
+     * 读取Excel表格表头的内容
+     *
+     * @param
+     * @return String 表头内容的数组
+     */
+    public String[] readExcelTitle(InputStream is) {
+        try {
+            // fs = new POIFSFileSystem(is);
+            wb = new XSSFWorkbook(is);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        sheet = wb.getSheetAt(0);
+        return readExcelTitleOnSheet(sheet);
+    }
+
+    private String[] readExcelTitleOnSheet(XSSFSheet sheet) {
+        row = sheet.getRow(0);
+        // 标题总列数
+        int colNum = row.getPhysicalNumberOfCells();
+        System.out.println("colNum:" + colNum);
+        String[] title = new String[colNum];
+        for (int i = 0; i < colNum; i++) {
+            // title[i] = getStringCellValue(row.getCell((short) i));
+            title[i] = getCellFormatValue(row.getCell((short) i));
+        }
+        return title;
+    }
+
+    /**
+     * 读取Excel数据内容
+     *
+     * @param InputStream
+     * @return Map 包含单元格数据内容的Map对象
+     */
+    /*public Map<Integer, String> readExcelContent(InputStream is) {
+        try {
+            // fs = new POIFSFileSystem(is);
+            wb = new XSSFWorkbook(is);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        sheet = wb.getSheetAt(0);
+
+        return readExcelContentOnSheet(sheet);
+    }*/
+
+   /* public Map<Integer, String> readExcelContentWeek(InputStream is) {
+        try {
+            // fs = new POIFSFileSystem(is);
+            wb = new XSSFWorkbook(is);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Map<Integer, String> map = null;
+        for (int i = 0; i < 8; i++) {
+            sheet = wb.getSheetAt(i);
+            TDietCookbookWeek cookbookWeek = beanTool.saveWeek(sheet.getSheetName());
+            map = readExcelContentOnSheetWeek(sheet, cookbookWeek);
+            System.out.println("------------------------分割线-------------------------------");
+        }
+        // sheet = wb.getSheetAt(0);
+        // TDietCookbookWeek cookbookWeek =
+        // beanTool.saveWeek(sheet.getSheetName());
+        // map = readExcelContentOnSheetWeek(sheet, cookbookWeek);
+        // System.out.println("------------------------分割线-------------------------------");
+        // sheet = wb.getSheetAt(1);
+        // cookbookWeek = beanTool.saveWeek(sheet.getSheetName());
+        // map = readExcelContentOnSheetWeek(sheet, cookbookWeek);
+        // System.out.println("------------------------分割线-------------------------------");
+        // sheet = wb.getSheetAt(4);
+        // cookbookWeek = beanTool.saveWeek(sheet.getSheetName());
+        // map = readExcelContentOnSheetWeek(sheet, cookbookWeek);
+        // System.out.println("------------------------分割线-------------------------------");
+        // sheet = wb.getSheetAt(5);
+        // cookbookWeek = beanTool.saveWeek(sheet.getSheetName());
+        // map = readExcelContentOnSheetWeek(sheet, cookbookWeek);
+        // System.out.println("------------------------分割线-------------------------------");
+        return map;
+    }*/
+
+    String tcname = "";
+    String meal = "";
+    String type = "";
+
+   /* public Map<Integer, String> readExcelContentOnSheetWeek(XSSFSheet sheet, TDietCookbookWeek cookbookWeek) {
+
+        System.out.println(sheet.getSheetName());
+        Map<Integer, String> content = new HashMap<Integer, String>();
+        String str = "";
+        // 得到总行数
+        int rowNum = sheet.getLastRowNum();
+        row = sheet.getRow(0);
+        int colNum = row.getPhysicalNumberOfCells();
+        // 正文内容应该从第二行开始,第一行为表头的标题
+        for (int i = 1; i <= rowNum; i++) {
+            row = sheet.getRow(i);
+            if (null == row) {
+                continue;
+            }
+            int j = 0;
+
+            // String seq = "";
+            // String dishname = "";
+            // String dishtypename = "";
+            // String foodtypename = "";
+            // String picture = "";
+            while (j < colNum) {
+                // 每个单元格的数据内容用"-"分割开，以后需要时用String类的replace()方法还原数据
+                // 也可以将每个单元格的数据设置到一个javabean的属性中，此时需要新建一个javabean
+                // str += getStringCellValue(row.getCell((short) j)).trim() +
+                // "-";
+                if (!ToolUtil.isEmpty(getCellFormatValue(row.getCell((short) j)))) {
+                    str += getCellFormatValue(row.getCell((short) j)).trim() + ",";
+                }
+                j++;
+            }
+            *//**** 保存实体类 **//*
+            try {
+                tcname = sheet.getSheetName();
+                String[] split = str.split(",");
+                if (split.length > 0) {
+
+                    if (!ToolUtil.isEmpty(split[0])) {
+                        meal = split[0];
+                    }
+                    if (!ToolUtil.isEmpty(split[1])) {
+                        type = split[1];
+                        // if ("早餐可选".equals(type) || "早餐默认".equals(type)) {
+                        // type = "早餐";
+                        // }
+                    }
+                }
+                if (split.length > 2) {
+
+                    for (int k = 2; k < split.length; k++) {
+                        if (!ToolUtil.isEmpty(split[k])) {
+                            if ("早餐默认".equals(type)) {
+                                beanTool.zhoucaipuBeans(sheet.getSheetName(), cookbookWeek.getId(), meal, String.valueOf(k - 1), "2", type, split[k]);
+                            } else {
+                                beanTool.zhoucaipuBeans(sheet.getSheetName(), cookbookWeek.getId(), meal, String.valueOf(k - 1), "1", type, split[k]);
+                            }
+                        }
+                    }
+                }
+                ;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            content.put(i, str);
+            str = "";
+        }
+        beanTool.clear();
+        System.out.println(beanTool.nofoods.size() + "没有的菜：" + beanTool.nofoods);
+
+        return content;
+    }*/
+
+    /*public Map<Integer, String> readExcelContentOnSheet(XSSFSheet sheet) {
+        System.out.println(sheet.getSheetName());
+        Map<Integer, String> content = new HashMap<Integer, String>();
+        String str = "";
+        // 得到总行数
+        int rowNum = sheet.getLastRowNum();
+        row = sheet.getRow(0);
+        int colNum = row.getPhysicalNumberOfCells();
+        // 正文内容应该从第二行开始,第一行为表头的标题
+        for (int i = 1; i <= rowNum; i++) {
+            row = sheet.getRow(i);
+            int j = 0;
+
+            String seq = "";
+            String dishname = "";
+            String dishtypename = "";
+            String foodtypename = "";
+            String picture = "";
+            while (j < colNum) {
+                // 每个单元格的数据内容用"-"分割开，以后需要时用String类的replace()方法还原数据
+                // 也可以将每个单元格的数据设置到一个javabean的属性中，此时需要新建一个javabean
+                // str += getStringCellValue(row.getCell((short) j)).trim() +
+                // "-";
+                str += getCellFormatValue(row.getCell((short) j)).trim() + ",";
+                if (j == 0) {
+                    seq = getCellFormatValue(row.getCell((short) j)).trim().split("\\.")[0];
+                }
+                if (j == 1) {
+                    dishname = getCellFormatValue(row.getCell((short) j)).trim();
+                }
+                if (j == 2) {
+                    dishtypename = getCellFormatValue(row.getCell((short) j)).trim();
+                }
+                if (j == 3) {
+                    foodtypename = getCellFormatValue(row.getCell((short) j)).trim();
+                }
+                if (j == 4) {
+                    picture = getCellFormatValue(row.getCell((short) j)).trim();
+                    String regEx = "[0-9]-.+\\.jpg";
+                    Pattern pattern = Pattern.compile(regEx);
+                    Matcher matcher = pattern.matcher(picture);
+                    if (matcher.find()) {
+                        picture = matcher.group();
+                    }
+                }
+                j++;
+            }
+            *//**** 保存实体类 **//*
+            try {
+                beanTool.caipinBeans(seq, dishname, dishtypename, foodtypename, picture);
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+            content.put(i, str);
+            str = "";
+        }
+        return content;
+    }*/
+
+    /**
+     * 获取单元格数据内容为字符串类型的数据
+     *
+     * @param cell
+     *            Excel单元格
+     * @return String 单元格数据内容
+     */
+    private String getStringCellValue(XSSFCell cell) {
+        String strCell = "";
+        switch (cell.getCellType()) {
+            case HSSFCell.CELL_TYPE_STRING:
+                strCell = cell.getStringCellValue();
+                break;
+            case HSSFCell.CELL_TYPE_NUMERIC:
+                strCell = String.valueOf(cell.getNumericCellValue());
+                break;
+            case HSSFCell.CELL_TYPE_BOOLEAN:
+                strCell = String.valueOf(cell.getBooleanCellValue());
+                break;
+            case HSSFCell.CELL_TYPE_BLANK:
+                strCell = "";
+                break;
+            default:
+                strCell = "";
+                break;
+        }
+        if (strCell.equals("") || strCell == null) {
+            return "";
+        }
+        if (cell == null) {
+            return "";
+        }
+        return strCell;
+    }
+
+    /**
+     * 获取单元格数据内容为日期类型的数据
+     *
+     * @param cell
+     *            Excel单元格
+     * @return String 单元格数据内容
+     */
+    private String getDateCellValue(XSSFCell cell) {
+        String result = "";
+        try {
+            int cellType = cell.getCellType();
+            if (cellType == HSSFCell.CELL_TYPE_NUMERIC) {
+                Date date = cell.getDateCellValue();
+                result = (date.getYear() + 1900) + "-" + (date.getMonth() + 1) + "-" + date.getDate();
+            } else if (cellType == HSSFCell.CELL_TYPE_STRING) {
+                String date = getStringCellValue(cell);
+                result = date.replaceAll("[年月]", "-").replace("日", "").trim();
+            } else if (cellType == HSSFCell.CELL_TYPE_BLANK) {
+                result = "";
+            }
+        } catch (Exception e) {
+            System.out.println("日期格式不正确!");
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    /**
+     * 根据HSSFCell类型设置数据
+     *
+     * @param cell
+     * @return
+     */
+    private String getCellFormatValue(XSSFCell cell) {
+        String cellvalue = "";
+        if (cell != null) {
+            // 判断当前Cell的Type
+            switch (cell.getCellType()) {
+                // 如果当前Cell的Type为NUMERIC
+                case HSSFCell.CELL_TYPE_NUMERIC:
+                case HSSFCell.CELL_TYPE_FORMULA: {
+                    // 判断当前的cell是否为Date
+                    if (HSSFDateUtil.isCellDateFormatted(cell)) {
+                        // 如果是Date类型则，转化为Data格式
+
+                        // 方法1：这样子的data格式是带时分秒的：2011-10-12 0:00:00
+                        // cellvalue = cell.getDateCellValue().toLocaleString();
+
+                        // 方法2：这样子的data格式是不带带时分秒的：2011-10-12
+                        Date date = cell.getDateCellValue();
+                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                        cellvalue = sdf.format(date);
+
+                    }
+                    // 如果是纯数字
+                    else {
+                        // 取得当前Cell的数值
+                        cellvalue = String.valueOf(cell.getNumericCellValue());
+                    }
+                    break;
+                }
+                // 如果当前Cell的Type为STRIN
+                case HSSFCell.CELL_TYPE_STRING:
+                    // 取得当前的Cell字符串
+                    cellvalue = cell.getRichStringCellValue().getString();
+                    break;
+                // 默认的Cell值
+                default:
+                    cellvalue = " ";
+            }
+        } else {
+            cellvalue = "";
+        }
+        return cellvalue;
+
+    }
+
+}
