@@ -1,0 +1,39 @@
+select je.ysmc,jerank,fzrank,jzrank,@sum:=jerank+fzrank+jzrank as rank from 
+(select @jenum:=@jenum+1 as jerank, t.ysmc  
+from
+ (select ysmc,SUM(je) as sumje from TB_DPSTAT_YSJXJXZH 
+ where datediff(curdate(),tjrq)<365 and datediff(curdate(),tjrq)>0 GROUP BY YSgh ORDER BY sumje Desc)
+  t,
+(select @jenum:=0) B  order by t.sumje desc) je,
+
+(select @fznum:=@fznum+1 as fzrank, t.ysmc,t.sumfzrs   
+from 
+(select ysmc,SUM(fzrs) as sumfzrs from TB_DPSTAT_YSJXJXZH  
+where datediff(curdate(),tjrq)<365 and datediff(curdate(),tjrq)>0 GROUP BY YSgh ORDER BY sumfzrs Desc) 
+ t,
+(select @fznum:=0) B  order by t.sumfzrs desc) fz,
+
+(select @jznum:=@jznum+1 as jzrank, t.ysmc,t.sumrjjzrs   
+from (
+select ysmc,SUM(RJJZRS) as sumrjjzrs from TB_DPSTAT_YSJXJXZH 
+where datediff(curdate(),tjrq)<365 and datediff(curdate(),tjrq)>0 GROUP BY YSgh ORDER BY sumrjjzrs Desc)
+  t,
+(select @jznum:=0) B  order by t.sumrjjzrs desc) jz
+
+where je.ysmc=fz.ysmc and fz.ysmc=jz.ysmc order by rank  limit 10
+
+----分别根据三个字段得出排名的名次，作为新的一个临时字段，之后再根据这三个字段之和，作为总的排名名次。
+
+知识点  1 ：用@jznum声明一个变量，来根据已经排好序的数据，添加一列新的序号列。
+
+select @jznum:=@jznum+1 as rank, st.xm from 
+		( select * from StudentInfo order by fenshu desc) st, (select @jznum:=0) B  order by rank
+
+
+知识点 2：在使用sql函数时，尽量不要把函数与表中的字段关联起来，这样的话，这个字段所带的索引就会失效。
+
+	例如：上面的SQL语句中所涉及的datediff函数，
+							用：
+							CURDATE()>tjrq and DATE_ADD(CURDATE(),INTERVAL -365 DAY)<tjrq 
+							来代替。这样函数和字段脱离，就不会影响字段的索引功能。
+

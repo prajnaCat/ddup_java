@@ -1,0 +1,61 @@
+/**
+     * 工具方法
+     * days=7,30,90  跨度：1,5,15
+     * 根据参数days,机制，得到日期的字符串集合。
+     * @return
+     */
+    public ArrayList<String> handleDays(int days){
+        int kuadu=1;
+        int qiantui=days+1;
+        if(7==days){
+            kuadu=1;
+            qiantui=days;
+        }else if(30==days){
+            kuadu=5;
+        }else if(90==days){
+            kuadu=15;
+        }
+        ArrayList<String> dates = new ArrayList<String>();
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+        Date date = new Date();
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTime(date);
+        calendar.add(calendar.DATE,-qiantui);//把日期往后增加一天.整数往后推,负数往前移动
+        date=calendar.getTime();
+        dates.add(formatter.format(date));
+
+        for(int i=6;i>0;i--){
+            calendar.setTime(date);
+            calendar.add(calendar.DATE,kuadu);//把日期往后增加n天.整数往后推,负数往前移动
+            date=calendar.getTime(); //这个时间就是日期往后推一天的结果
+            String dateString = formatter.format(date);
+            dates.add(dateString);
+        }
+        return dates;
+    }
+
+    /**
+     * 工具方法
+     * days=180,365  跨度：1,得到前6,12个月
+     * 根据参数months,机制，得到月的字符串集合。
+     * @return
+     */
+    public ArrayList<String> handleMonths(int months){
+        ArrayList<String> dates = new ArrayList<String>();
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM");
+        Date date = new Date();
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTime(date);
+        calendar.add(calendar.MONTH,-months);//把日期往后增加一天.整数往后推,负数往前移动
+        date=calendar.getTime();
+        dates.add(formatter.format(date));
+
+        for(int i=months-1;i>0;i--){
+            calendar.setTime(date);
+            calendar.add(calendar.MONTH,1);//把日期往后增加一天.整数往后推,负数往前移动
+            date=calendar.getTime(); //这个时间就是日期往后推一天的结果
+            String dateString = formatter.format(date);
+            dates.add(dateString);
+        }
+        return dates;
+    }
